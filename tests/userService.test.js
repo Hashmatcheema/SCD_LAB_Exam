@@ -4,11 +4,13 @@ const jwt = require('jsonwebtoken');
 
 describe('User Service Tests', () => {
     beforeEach(() => {
+        // Reset users array to initial state before each test
         userService.resetUsers();
     });
 
     describe('createUser', () => {
         test('Should create a valid user – should validate required user fields', () => {
+            // Test with all required fields present
             const validUser = {
                 name: 'Test User',
                 email: 'test@example.com',
@@ -23,13 +25,15 @@ describe('User Service Tests', () => {
             expect(result.data.name).toBe('Test User');
             expect(result.data.email).toBe('test@example.com');
             expect(result.data.age).toBe(25);
-            expect(result.data.password).toBeUndefined(); 
+            expect(result.data.password).toBeUndefined(); // Password should not be returned
             expect(result.error).toBeUndefined();
             
+            // Also test missing required fields
             const incompleteUser = {
                 email: 'test2@example.com',
                 password: 'password123',
                 age: 25
+                // Missing name
             };
             const result2 = userService.createUser(incompleteUser);
             expect(result2.success).toBe(false);

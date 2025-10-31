@@ -2,6 +2,7 @@ const orderService = require('../src/services/orderService');
 
 describe('Order Service Tests', () => {
     beforeEach(() => {
+        // Reset orders and products before each test
         orderService.resetOrders();
         orderService.resetProducts();
     });
@@ -33,8 +34,8 @@ describe('Order Service Tests', () => {
         test('Order creation - should reject order with insufficient stock', () => {
             const invalidOrder = {
                 userId: 1,
-                productId: 1, 
-                quantity: 15  
+                productId: 1, // Product 1 has stock of 10
+                quantity: 15  // Requesting more than available
             };
 
             const result = orderService.createOrder(invalidOrder);
@@ -43,6 +44,7 @@ describe('Order Service Tests', () => {
             expect(result.error).toBe('Insufficient stock');
             expect(result.data).toBeUndefined();
 
+            // Verify no order was created
             const allOrders = orderService.getAllOrders();
             expect(allOrders.length).toBe(0);
         });
@@ -51,7 +53,7 @@ describe('Order Service Tests', () => {
             const invalidOrder = {
                 userId: 1,
                 productId: 1,
-                quantity: 0 
+                quantity: 0  // Invalid: must be positive
             };
 
             const result = orderService.createOrder(invalidOrder);
@@ -60,6 +62,7 @@ describe('Order Service Tests', () => {
             expect(result.error).toBe('Quantity must be a positive integer');
             expect(result.data).toBeUndefined();
 
+            // Test with negative quantity
             const invalidOrder2 = {
                 userId: 1,
                 productId: 1,
@@ -86,6 +89,7 @@ describe('Order Service Tests', () => {
             const incompleteOrder = {
                 userId: 1,
                 productId: 1
+                // Missing quantity
             };
 
             const result = orderService.createOrder(incompleteOrder);
@@ -97,7 +101,7 @@ describe('Order Service Tests', () => {
         test('Order creation - should reject order with non-existent product', () => {
             const invalidOrder = {
                 userId: 1,
-                productId: 999, 
+                productId: 999, // Non-existent product
                 quantity: 1
             };
 
