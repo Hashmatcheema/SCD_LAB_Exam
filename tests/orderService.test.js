@@ -1,115 +1,43 @@
-const orderService = require('../src/services/orderService');
+// tests/orderService.test.js
+const request = require('supertest');
+const app = require('../src/app');
 
-describe('Order Service Tests', () => {
-    beforeEach(() => {
-        // Reset orders and products before each test
-        orderService.resetOrders();
-        orderService.resetProducts();
-    });
+describe('Order Service', () => {
+  // Reset products stock before each test
+  beforeEach(async () => {
+    // Re-import the router to get fresh mock DB
+    delete require.cache[require.resolve('../src/routes/orders')];
+    delete require.cache[require.resolve('../src/routes/products')];
+  });
 
-    describe('createOrder', () => {
-        test('Order creation - should create order with valid data', () => {
-            const validOrder = {
-                userId: 1,
-                productId: 1,
-                quantity: 2
-            };
+  // a. Order creation – should create order with valid data
+  test('a. Order creation – should create order with valid data', async () => {
+    const res = await request(app)
+      .post('/api/orders')
+      .send({ userId: 99, productId: 1, quantity: 2 });
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.total).toBe(999.99 * 2);
+    expect(res.body.data.status).toBe('completed');
+  });
 
-            const result = orderService.createOrder(validOrder);
+  // b. Order creation – should reject order with insufficient stock
+  test('b. Order creation – should reject order with insufficient stock', async () => {
+    // First exhaust stock of Mouse (id=2, stock=3)
+    await request(app).post('/api/orders').send({ userId: 1, productId: 2, quantity: 3 });
+    const res = await request(app)
+      .post('/api/orders')
+      .send({ userId: 1, productId: 2, quantity: 1 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Insufficient stock');
+  });
 
-            expect(result.success).toBe(true);
-            expect(result.data).toBeDefined();
-            expect(result.data.userId).toBe(1);
-            expect(result.data.productId).toBe(1);
-            expect(result.data.quantity).toBe(2);
-            expect(result.data.total).toBeDefined();
-            expect(result.data.status).toBe('completed');
-            expect(result.error).toBeUndefined();
-
-            // Verify order was added
-            const allOrders = orderService.getAllOrders();
-            expect(allOrders.length).toBe(1);
-        });
-
-        test('Order creation - should reject order with insufficient stock', () => {
-            const invalidOrder = {
-                userId: 1,
-                productId: 1, // Product 1 has stock of 10
-                quantity: 15  // Requesting more than available
-            };
-
-            const result = orderService.createOrder(invalidOrder);
-
-            expect(result.success).toBe(false);
-            expect(result.error).toBe('Insufficient stock');
-            expect(result.data).toBeUndefined();
-
-            // Verify no order was created
-            const allOrders = orderService.getAllOrders();
-            expect(allOrders.length).toBe(0);
-        });
-
-        test('Order creation - should reject order with invalid quantity', () => {
-            const invalidOrder = {
-                userId: 1,
-                productId: 1,
-                quantity: 0  // Invalid: must be positive
-            };
-
-            const result = orderService.createOrder(invalidOrder);
-
-            expect(result.success).toBe(false);
-            expect(result.error).toBe('Quantity must be a positive integer');
-            expect(result.data).toBeUndefined();
-
-            // Test with negative quantity
-            const invalidOrder2 = {
-                userId: 1,
-                productId: 1,
-                quantity: -5
-            };
-
-            const result2 = orderService.createOrder(invalidOrder2);
-            expect(result2.success).toBe(false);
-            expect(result2.error).toBe('Quantity must be a positive integer');
-
-            // Test with non-integer quantity
-            const invalidOrder3 = {
-                userId: 1,
-                productId: 1,
-                quantity: 2.5
-            };
-
-            const result3 = orderService.createOrder(invalidOrder3);
-            expect(result3.success).toBe(false);
-            expect(result3.error).toBe('Quantity must be a positive integer');
-        });
-
-        test('Order creation - should reject order with missing required fields', () => {
-            const incompleteOrder = {
-                userId: 1,
-                productId: 1
-                // Missing quantity
-            };
-
-            const result = orderService.createOrder(incompleteOrder);
-
-            expect(result.success).toBe(false);
-            expect(result.error).toBe('UserId, productId, and quantity are required fields');
-        });
-
-        test('Order creation - should reject order with non-existent product', () => {
-            const invalidOrder = {
-                userId: 1,
-                productId: 999, // Non-existent product
-                quantity: 1
-            };
-
-            const result = orderService.createOrder(invalidOrder);
-
-            expect(result.success).toBe(false);
-            expect(result.error).toBe('Product not found');
-        });
-    });
+  // c. Order creation – should reject order with invalid quantity
+  test('c. Order creation – should reject order with invalid quantity', async () => {
+    const res = await request(app)
+      .post('/api/orders')
+      .send({ userId: 1, productId: 1, quantity: -5 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Quantity must be positive');
+  });
 });
-

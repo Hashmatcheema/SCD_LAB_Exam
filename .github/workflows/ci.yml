@@ -1,36 +1,55 @@
-name: CI Pipeline
+name: CI & Daily Maintenance
 
 on:
   push:
     branches: [ main ]
   schedule:
-    - cron: '0 0 * * *'  # Every midnight
+    - cron: '0 0 * * *'   
 
 jobs:
   test:
+    name: Run Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
-      - name: Install Dependencies
-        run: npm install
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Run Tests
-        run: npm test
+      - name: Run tests & generate report
+        run: npm run test:ci
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jest-test-results
+          path: junit.xml
 
   deploy-check:
-    runs-on: ubuntu-latest
+    name: Deploy System Check (midnight)
     needs: test
     if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
     steps:
-      - name: Simulate Deploy User Log
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Simulate deploy user log
         run: |
           echo "$(date): Deploy system check executed" >> system_check.log
-          echo "Log would be saved to /home/deploy/system_check.log on real server"
-          cat system_check.log
+          mkdir -p /tmp/home/deploy
+          cp system_check.log /tmp/home/deploy/system_check.log
+          cat /tmp/home/deploy/system_check.log
+
+      - name: Upload log artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-system-check-log
+          path: /tmp/home/deploy/system_check.log
