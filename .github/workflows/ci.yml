@@ -1,0 +1,36 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * *'  # Every midnight
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Tests
+        run: npm test
+
+  deploy-check:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Simulate Deploy User Log
+        run: |
+          echo "$(date): Deploy system check executed" >> system_check.log
+          echo "Log would be saved to /home/deploy/system_check.log on real server"
+          cat system_check.log
